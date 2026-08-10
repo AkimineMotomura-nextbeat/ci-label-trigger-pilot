@@ -1,0 +1,37 @@
+name: ci-trigger
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  actions: write
+  pull-requests: write
+
+jobs:
+  dispatch:
+    if: github.event.label.name == 'run-ci'
+    runs-on: ubuntu-latest
+    steps:
+      - name: dispatch ci
+        run: >
+          gh workflow run ci.yml
+          --repo "${{ github.repository }}"
+          --ref "${{ github.event.pull_request.head.ref }}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: remove label (push-button semantics)
+        run: >
+          gh pr edit "${{ github.event.pull_request.number }}"
+          --repo "${{ github.repository }}"
+          --remove-label run-ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: notify on PR
+        run: >
+          gh pr comment "${{ github.event.pull_request.number }}"
+          --repo "${{ github.repository }}"
+          --body "🔄 CI dispatched for \`${{ github.event.pull_request.head.ref }}\` → https://github.com/${{ github.repository }}/actions/workflows/ci.yml"
+        env:
+          GH_TOKEN: ${{ github.token }}

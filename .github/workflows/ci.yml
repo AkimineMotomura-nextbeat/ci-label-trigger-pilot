@@ -1,0 +1,39 @@
+name: ci
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: dummy tests
+        run: |
+          echo "running dummy tests on $(git rev-parse HEAD)"
+          sleep 20
+          echo "tests passed"
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: dummy lint
+        run: echo "lint ok"
+
+  ci-gate:
+    if: always()
+    needs: [test, lint]
+    runs-on: ubuntu-latest
+    steps:
+      - name: verify all jobs succeeded
+        run: |
+          results='${{ join(needs.*.result, ' ') }}'
+          echo "needs results: $results"
+          for r in $results; do
+            [ "$r" = "success" ] || exit 1
+          done
