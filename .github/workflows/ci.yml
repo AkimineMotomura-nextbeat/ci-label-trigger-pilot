@@ -17,7 +17,8 @@ jobs:
         run: |
           echo "running dummy tests on $(git rev-parse HEAD)"
           sleep 20
-          echo "tests passed"
+          echo "simulating failure"
+          exit 1
 
   lint:
     runs-on: ubuntu-latest
