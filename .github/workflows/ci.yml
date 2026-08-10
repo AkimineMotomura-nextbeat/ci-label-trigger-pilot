@@ -29,11 +29,27 @@ jobs:
     if: always()
     needs: [test, lint]
     runs-on: ubuntu-latest
+    permissions:
+      statuses: write
     steps:
       - name: verify all jobs succeeded
+        id: verdict
         run: |
-          results='${{ join(needs.*.result, ' ') }}'
-          echo "needs results: $results"
-          for r in $results; do
-            [ "$r" = "success" ] || exit 1
+          state=success
+          for r in ${{ join(needs.*.result, ' ') }}; do
+            [ "$r" = "success" ] || state=failure
           done
+          echo "needs results: ${{ join(needs.*.result, ' ') }} -> $state"
+          echo "state=$state" >> "$GITHUB_OUTPUT"
+      - name: report commit status (plan B)
+        if: always()
+        run: >
+          gh api "repos/${{ github.repository }}/statuses/${{ github.sha }}"
+          -f state="${{ steps.verdict.outputs.state }}"
+          -f context="ci/gate"
+          -f description="label-triggered CI gate"
+          -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: gate
+        run: '[ "${{ steps.verdict.outputs.state }}" = "success" ]'
